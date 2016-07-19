@@ -36,7 +36,7 @@ This is set after `:init`. This is `server_ts - myTS`, and is used to send the p
   * `function hasher`
 This is a hashing function that, given the body of a request as its first and only parameter, will return the authorization hash associated with this instance. It is called, by the `Scheduler`, `hasher(string requestBody, dictionary<string, Variant> bucket)`. This should be callable like a function. In my implementation it is a table with a `__call` metamethod.
 * Methods
-  * `:new(dictionary<string, Variant>)
+  * `:new(dictionary<string, Variant>)`  
 Create a new GameAnalyticsInstance. The keys and values to the dictionary are:
     * `gameKey = string`
     * `secretKey = string`
