@@ -30,7 +30,7 @@ local enum = require("enum")
 -- If you use a similar solution and you need to keep times synchronized
 --  between this module and other parts of your game then change this function.
 local GET_TIME = function()
-	return tick()
+	return os.time()
 end
 
 local tconcat = table.concat
@@ -292,11 +292,11 @@ local function getTableSize(tbl)
 	return gtbli ~= 0 and gtbli
 end
 
-local function submitterWait(this, now)
+local function submitterWait(this, now, clientTS_TIME)
 	-- ALSO EDIT :submit BELOW
 	this.instance:waitForInit()
 	if this.instance.sendEvents then
-		this:set("client_ts", mfloor(GET_TIME() + this.instance.timestampOffset))
+		this:set("client_ts", mfloor((clientTS_TIME or GET_TIME()) + this.instance.timestampOffset))
 		return this.instance.scheduler:schedule(this, now) or this
 	elseif now then
 		return
@@ -498,18 +498,18 @@ GameAnalyticsRequest = Class:new({
 		end
 		return data
 	end,
-	submit = function(this, now)
+	submit = function(this, now, clientTS_TIME)
 		-- ALSO EDIT submitterWait ABOVE
 		if this.instance.hasInit == nil then
 			if not now then
-				coroutine.wrap(submitterWait)(this)
+				coroutine.wrap(submitterWait)(this, now, clientTS_TIME)
 				return this
 			else
 				this.instance:waitForInit()
 			end
 		end
 		if this.instance.sendEvents then
-			this:set("client_ts", mfloor(GET_TIME() + this.instance.timestampOffset))
+			this:set("client_ts", mfloor((clientTS_TIME or GET_TIME()) + this.instance.timestampOffset))
 			return this, this.instance.scheduler:schedule(this, now)
 		elseif now then
 			return this

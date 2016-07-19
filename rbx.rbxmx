@@ -1,6 +1,114 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 	<External>null</External>
 	<External>nil</External>
+	<Item class="Script" referent="RBXE50BF0901108421B9E990099255EB07F">
+		<Properties>
+			<bool name="Disabled">false</bool>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">GameAnalyticsTest</string>
+			<string name="ScriptGuid"></string>
+			<ProtectedString name="Source"><![CDATA[-- Corecii Cyr 2016-07-19
+
+-- This is a very basic test of the functionality, it is not near complete!
+-- This also acts as an example as to how it can be used.
+
+local GAInstance = require(game.ServerStorage.GameAnalytics)
+
+local HttpService = game:GetService("HttpService")
+
+---
+
+-- Submit requests ASAP, or wait until they're scheduled?
+local TEST_SUBMIT_NOW = true
+
+---
+
+local ga = GAInstance:new({
+	gameKey = "5c6bcb5402204249437fb5a7a80a4959",
+	secretKey = "16813a12f718bc5c620f56944e1abc3ea13ccbac",
+	url = GAInstance.sandboxUrl
+})
+
+print("test init...")
+ga:init()
+print("inited")
+
+local defAnno = ga:request({
+	device = "unknown",
+	v = 2,
+	user_id = HttpService:GenerateGUID(false):lower(),
+	sdk_version = "rest api v2",
+	os_version = "windows 0",
+	manufacturer = "unknown",
+	platform = "windows",
+	session_id = HttpService:GenerateGUID(false):lower(),
+	session_num = 1,
+	build = "1",
+})
+
+
+local session_start = defAnno:child()
+	:set("category", "user")
+	:submit(TEST_SUBMIT_NOW)
+
+local business_test = defAnno:child()
+	:set(
+		"category", "business",
+		"amount", 100,
+		"currency", "USD",
+		"transaction_num", 1,
+		"cart_type", "test_implementation"
+	)
+	:push("event_id", "testType", "testId")
+	:clone():child():collapse():submit()  -- test clone, child, and collapse
+
+local resource_test_sink = defAnno:child()
+	:set(
+		"category", "resource",
+		"amount", 50
+	)
+	:push("event_id", "Sink", "implementor", "sinker", "implementedSink")
+	:submit(TEST_SUBMIT_NOW)
+
+local resource_test_sink = defAnno:child()
+	:set(
+		"category", "resource",
+		"amount", 25
+	)
+	:push("event_id", "Source", "implementor", "sourcer", "implementedSource")
+	:submit(TEST_SUBMIT_NOW)
+
+local progression_test_start = defAnno:child()
+	:set(
+		"category", "progression"
+	)
+	:push("event_id", "Start", "ex1", "ex2", "ex3")
+	:submit(TEST_SUBMIT_NOW)
+
+local progression_test_fail = defAnno:child()
+	:set(
+		"category", "progression",
+		"attempt_num", 1,
+		"score", 4
+	)
+	:push("event_id", "Fail", "ex1", "ex2", "ex3")
+	:submit(TEST_SUBMIT_NOW)
+
+progression_test_start:submit()
+
+local progression_test_complete = defAnno:child()
+	:set(
+		"category", "progression",
+		"attempt_num", 2,
+		"score", 20
+	)
+	:push("event_id", "Complete", "ex1", "ex2", "ex3")
+	:submit(TEST_SUBMIT_NOW)
+
+print("Did all test requests, any errors are posted.")
+]]></ProtectedString>
+		</Properties>
+	</Item>
 	<Item class="ModuleScript" referent="RBX3CC6947EFD054565B55E369D3DB3975B">
 		<Properties>
 			<Content name="LinkedSource"><null></null></Content>
@@ -38,7 +146,7 @@ local enum = require("enum")
 -- If you use a similar solution and you need to keep times synchronized
 --  between this module and other parts of your game then change this function.
 local GET_TIME = function()
-	return tick()
+	return os.time()
 end
 
 local tconcat = table.concat
@@ -300,11 +408,11 @@ local function getTableSize(tbl)
 	return gtbli ~= 0 and gtbli
 end
 
-local function submitterWait(this, now)
+local function submitterWait(this, now, clientTS_TIME)
 	-- ALSO EDIT :submit BELOW
 	this.instance:waitForInit()
 	if this.instance.sendEvents then
-		this:set("client_ts", mfloor(GET_TIME() + this.instance.timestampOffset))
+		this:set("client_ts", mfloor((clientTS_TIME or GET_TIME()) + this.instance.timestampOffset))
 		return this.instance.scheduler:schedule(this, now) or this
 	elseif now then
 		return
@@ -506,18 +614,18 @@ GameAnalyticsRequest = Class:new({
 		end
 		return data
 	end,
-	submit = function(this, now)
+	submit = function(this, now, clientTS_TIME)
 		-- ALSO EDIT submitterWait ABOVE
 		if this.instance.hasInit == nil then
 			if not now then
-				coroutine.wrap(submitterWait)(this)
+				coroutine.wrap(submitterWait)(this, now, clientTS_TIME)
 				return this
 			else
 				this.instance:waitForInit()
 			end
 		end
 		if this.instance.sendEvents then
-			this:set("client_ts", mfloor(GET_TIME() + this.instance.timestampOffset))
+			this:set("client_ts", mfloor((clientTS_TIME or GET_TIME()) + this.instance.timestampOffset))
 			return this, this.instance.scheduler:schedule(this, now)
 		elseif now then
 			return this
@@ -7949,113 +8057,5 @@ return M
 ]]></ProtectedString>
 			</Properties>
 		</Item>
-	</Item>
-	<Item class="Script" referent="RBXE50BF0901108421B9E990099255EB07F">
-		<Properties>
-			<bool name="Disabled">false</bool>
-			<Content name="LinkedSource"><null></null></Content>
-			<string name="Name">GameAnalyticsTest</string>
-			<string name="ScriptGuid"></string>
-			<ProtectedString name="Source"><![CDATA[-- Corecii Cyr 2016-07-19
-
--- This is a very basic test of the functionality, it is not near complete!
--- This also acts as an example as to how it can be used.
-
-local GAInstance = require(game.ServerStorage.GameAnalytics)
-
-local HttpService = game:GetService("HttpService")
-
----
-
--- Submit requests ASAP, or wait until they're scheduled?
-local TEST_SUBMIT_NOW = true
-
----
-
-local ga = GAInstance:new({
-	gameKey = "5c6bcb5402204249437fb5a7a80a4959",
-	secretKey = "16813a12f718bc5c620f56944e1abc3ea13ccbac",
-	url = GAInstance.sandboxUrl
-})
-
-print("test init...")
-ga:init()
-print("inited")
-
-local defAnno = ga:request({
-	device = "unknown",
-	v = 2,
-	user_id = HttpService:GenerateGUID(false):lower(),
-	sdk_version = "rest api v2",
-	os_version = "windows 0",
-	manufacturer = "unknown",
-	platform = "windows",
-	session_id = HttpService:GenerateGUID(false):lower(),
-	session_num = 1,
-	build = "1",
-})
-
-
-local session_start = defAnno:child()
-	:set("category", "user")
-	:submit(TEST_SUBMIT_NOW)
-
-local business_test = defAnno:child()
-	:set(
-		"category", "business",
-		"amount", 100,
-		"currency", "USD",
-		"transaction_num", 1,
-		"cart_type", "test_implementation"
-	)
-	:push("event_id", "testType", "testId")
-	:clone():child():collapse():submit()  -- test clone, child, and collapse
-
-local resource_test_sink = defAnno:child()
-	:set(
-		"category", "resource",
-		"amount", 50
-	)
-	:push("event_id", "Sink", "implementor", "sinker", "implementedSink")
-	:submit(TEST_SUBMIT_NOW)
-
-local resource_test_sink = defAnno:child()
-	:set(
-		"category", "resource",
-		"amount", 25
-	)
-	:push("event_id", "Source", "implementor", "sourcer", "implementedSource")
-	:submit(TEST_SUBMIT_NOW)
-
-local progression_test_start = defAnno:child()
-	:set(
-		"category", "progression"
-	)
-	:push("event_id", "Start", "ex1", "ex2", "ex3")
-	:submit(TEST_SUBMIT_NOW)
-
-local progression_test_fail = defAnno:child()
-	:set(
-		"category", "progression",
-		"attempt_num", 1,
-		"score", 4
-	)
-	:push("event_id", "Fail", "ex1", "ex2", "ex3")
-	:submit(TEST_SUBMIT_NOW)
-
-progression_test_start:submit()
-
-local progression_test_complete = defAnno:child()
-	:set(
-		"category", "progression",
-		"attempt_num", 2,
-		"score", 20
-	)
-	:push("event_id", "Complete", "ex1", "ex2", "ex3")
-	:submit(TEST_SUBMIT_NOW)
-
-print("Did all test requests, any errors are posted.")
-]]></ProtectedString>
-		</Properties>
 	</Item>
 </roblox>
