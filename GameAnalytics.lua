@@ -429,7 +429,7 @@ GameAnalyticsRequest = Class:new({
 					local t = data[k] or {}
 					local loc = #t
 					for i, vi in next, v do
-						t[loc + i] = vi
+						t[loc + i] = vi ~= GameAnalyticsRequest.Nil and vi or nil
 					end
 					data[k] = t
 				else
@@ -493,7 +493,7 @@ GameAnalyticsRequest = Class:new({
 					local t = data[k] or {}
 					local loc = #t
 					for i, vi in next, v do
-						t[loc + i] = vi
+						t[loc + i] = vi ~= GameAnalyticsRequest.Nil and vi or nil
 					end
 					data[k] = t
 				else
