@@ -1,7 +1,6 @@
 -- Corecii Cyr 2016-07-19
 
--- This is a very basic test of the functionality, it is not near complete!
--- This also acts as an example as to how it can be used.
+-- Basic example of using thiss api to send various requests
 
 local GAInstance = require(game.ServerStorage.GameAnalytics)
 
@@ -20,29 +19,36 @@ local ga = GAInstance:new({
 	url = GAInstance.sandboxUrl
 })
 
-print("test init...")
 ga:init()
-print("inited")
 
-local defAnno = ga:request({
-	device = "unknown",
+-- Default annotations that work for every user.
+-- Unfortunately, ROBLOX doesn't give us access to and device/platform/manufacturer info
+--  Because of this, we will set them all to whatever works. the GA servers only accept actual OS/platforms, so we'll use windows.
+local defAnnoAll = ga:request({
 	v = 2,
-	user_id = HttpService:GenerateGUID(false):lower(),
 	sdk_version = "rest api v2",
 	os_version = "windows 0",
-	manufacturer = "unknown",
 	platform = "windows",
-	session_id = HttpService:GenerateGUID(false):lower(),
-	session_num = 1,
+	manufacturer = "unknown",
+	device = "unknown",
 	build = "1",
 })
 
+-- Create default annotations for a specific user.
+-- Collapse this request so that the annotations for this user cannot
+--  change. You should also be saving the data here so that you can properly
+--  signal a session end if the server crashes.
+local defAnnoUser = defAnnoAll:child({
+	user_id = HttpService:GenerateGUID(false):lower(),
+	session_id = HttpService:GenerateGUID(false):lower(),
+	session_num = 1
+}):collapse()
 
-local session_start = defAnno:child()
+local session_start = defAnnoUser:child()
 	:set("category", "user")
 	:submit(TEST_SUBMIT_NOW)
 
-local business_test = defAnno:child()
+local business_test = defAnnoUser:child()
 	:set(
 		"category", "business",
 		"amount", 100,
@@ -51,9 +57,9 @@ local business_test = defAnno:child()
 		"cart_type", "test_implementation"
 	)
 	:push("event_id", "testType", "testId")
-	:clone():child():collapse():submit()  -- test clone, child, and collapse
+	:submit(TEST_SUBMIT_NOW)
 
-local resource_test_sink = defAnno:child()
+local resource_test_sink = defAnnoUser:child()
 	:set(
 		"category", "resource",
 		"amount", 50
@@ -61,7 +67,7 @@ local resource_test_sink = defAnno:child()
 	:push("event_id", "Sink", "implementor", "sinker", "implementedSink")
 	:submit(TEST_SUBMIT_NOW)
 
-local resource_test_sink = defAnno:child()
+local resource_test_sink = defAnnoUser:child()
 	:set(
 		"category", "resource",
 		"amount", 25
@@ -69,14 +75,14 @@ local resource_test_sink = defAnno:child()
 	:push("event_id", "Source", "implementor", "sourcer", "implementedSource")
 	:submit(TEST_SUBMIT_NOW)
 
-local progression_test_start = defAnno:child()
+local progression_test_start = defAnnoUser:child()
 	:set(
 		"category", "progression"
 	)
 	:push("event_id", "Start", "ex1", "ex2", "ex3")
 	:submit(TEST_SUBMIT_NOW)
 
-local progression_test_fail = defAnno:child()
+local progression_test_fail = defAnnoUser:child()
 	:set(
 		"category", "progression",
 		"attempt_num", 1,
@@ -85,9 +91,9 @@ local progression_test_fail = defAnno:child()
 	:push("event_id", "Fail", "ex1", "ex2", "ex3")
 	:submit(TEST_SUBMIT_NOW)
 
-progression_test_start:submit()
+progression_test_start:submit(TEST_SUBMIT_NOW)  -- You can submit a request multiple times.
 
-local progression_test_complete = defAnno:child()
+local progression_test_complete = defAnnoUser:child()
 	:set(
 		"category", "progression",
 		"attempt_num", 2,
@@ -96,4 +102,4 @@ local progression_test_complete = defAnno:child()
 	:push("event_id", "Complete", "ex1", "ex2", "ex3")
 	:submit(TEST_SUBMIT_NOW)
 
-print("Did all test requests, any errors are posted.")
+print("Did all test requests")
