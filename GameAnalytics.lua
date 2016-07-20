@@ -216,7 +216,7 @@ GameAnalyticsInstance = Class:new({
 		assert(options.secretKey ~= nil, "You must provide a secretKey string in the options table")
 		assert(type(options.secretKey) == "string", "secretKey should be a string")
 		assert(
-			options.scheduler == nil or (type(options.scheduler) == "table" and options.schedule),
+			options.scheduler == nil or (type(options.scheduler) == "table" and options.scheduler.schedule),
 			"If you provide a scheduler, it must be a table with a 'schedule' method"
 		)
 		assert(
