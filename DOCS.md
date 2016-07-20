@@ -103,8 +103,8 @@ Returns self.
 Returns a new object with all `data` `:collapse`'d.
   * `:submit(boolean now, number clientTS_TIME)`  
 Submits the request to the `scheduler` in this request's `instance`. If `now` evaluates to true then the request will submit now and return the result. See `Scheduler:schedule` for more details. If `sendEvents` in `instance` evaluates to false then the event is not submitted and only `self` is returned.  
-If `clientTS_TIME` is non-nil then that time, plus `timestampOffset`, is used for `client_ts`. Otherwise, `client_ts` will use the the value returned by `GET_TIME`, plus `client_ts`.
-See [default annotations](http://restapidocs.gameanalytics.com/#default-annotations-shared) for info on `client_ts` and see the GameAnalytics script for info on `GET_TIME`.
+If `clientTS_TIME` is non-nil then that time, plus `timestampOffset`, is used for `client_ts`. Otherwise, `client_ts` will use the the value returned by `GET_TIME()`, plus `client_ts`.
+See [default annotations](http://restapidocs.gameanalytics.com/#default-annotations-shared) for info on `client_ts` and see the GameAnalytics script for info on `GET_TIME()`.
 This returns `self, results` where `results` are the results of `:schedule`.
   * `:getGameKey()`  
 Returns the game key associeted with this request. This is used by the `Scheduler` and uses the request's `instance` property to get the key.
