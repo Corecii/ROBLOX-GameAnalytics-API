@@ -1,6 +1,6 @@
 -- Corecii Cyr 2016-07-19
 
--- Basic example of using thiss api to send various requests
+-- Basic example of using this api to send various requests
 
 local GAInstance = require(game.ServerStorage.GameAnalytics)
 
