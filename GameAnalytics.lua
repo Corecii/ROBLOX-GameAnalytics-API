@@ -410,17 +410,22 @@ GameAnalyticsRequest = Class:new({
 	child = function(this)
 		return this:new(this.instance, this)
 	end,
-	collapse = function(this)
+	collapse = function(this, collapseFragments)
 		-- collapse all parent data down into this one and remove the parent property
-		local data = {}
+		local data, revisit = {}, collapseFragments and {}
 		local top, req = {this}
 		while top[1].parent do
 			top = {top[1].parent, top}
 		end
 		repeat
 			req = top[1]
+			local n
 			for k, v in next, req.data do
-				if k:match("^_sub_(.*)") then
+				n = k:match("^_sub_(.*)$")
+				if n then
+					if collapseFragments then
+						revisit[n] = true
+					end
 					local t = data[k] or {}
 					local loc = #t
 					for i, vi in next, v do
@@ -434,6 +439,14 @@ GameAnalyticsRequest = Class:new({
 			top = top[2]
 		until
 			not top
+		if collapseFragments then
+			local n
+			for k in next, revisit do
+				n = "_sub_"..k
+				data[k] = tconcat(data[n], ":")
+				data[n] = nil
+			end
+		end
 		this.data = data
 		this.parent = nil
 		return this
@@ -490,7 +503,7 @@ GameAnalyticsRequest = Class:new({
 			top = top[2]
 		until
 			not top
-		local i, n, val
+		local n
 		for k in next, revisit do
 			n = "_sub_"..k
 			data[k] = tconcat(data[n], ":")

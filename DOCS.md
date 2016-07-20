@@ -37,11 +37,11 @@ This is set after `:init`. This is `server_ts - myTS`, and is used to send the p
 This is a hashing function that, given the body of a request as its first and only parameter, will return the authorization hash associated with this instance. It is called, by the `Scheduler`, `hasher(string requestBody, dictionary<string, Variant> bucket)`. This should be callable like a function. In my implementation it is a table with a `__call` metamethod.
 * Methods
   * `:new(dictionary<string, Variant>)`  
-Create a new GameAnalyticsInstance. The keys and values to the dictionary are:
-    * `gameKey = string`
-    * `secretKey = string`
-    * `[scheduler = Scheduler]`
-    * `[url = string]`
+Create a new `GameAnalyticsInstance`. The keys and values to the dictionary are:
+     * `gameKey = string`
+     * `secretKey = string`
+     * `[scheduler = Scheduler]`
+     * `[url = string]`
 
   * `:init()`  
 Initialize this instance, sending the init request when called (it sends the request without scheduling).
@@ -94,8 +94,10 @@ If this request does not have values to pop then it will mark those slots as `Ni
 Create and return a clone of this object. The clone will have individual, cloned `data` from self. The clone will not collapse/clone parent `data`, but instead set the clones `parent` property to the same as self.
   * `:child()`  
 Create and return a child object. Child objects will inherit all properties, including new/changed ones, of their parent when submitted. Child objects do not modify their parent object and can be collapsed into a single object with its own unique `data` without inheritance using `:collapse`.
-  * `:collapse()`  
+  * `:collapse(boolean collapseFragments)`  
 Inherits all its ancestor's `data` and sets its parent to nil.  
+If `collapseFragments` evaluates to `true` then 'fragmented' (ones that have been created using `:push` or `:pop`)
+will be combined into a single string value.  
 Returns self.
   * `:derive()`  
 Returns a new object with all `data` `:collapse`'d.
