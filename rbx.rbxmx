@@ -1,114 +1,6 @@
 <roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.roblox.com/roblox.xsd" version="4">
 	<External>null</External>
 	<External>nil</External>
-	<Item class="Script" referent="RBXE50BF0901108421B9E990099255EB07F">
-		<Properties>
-			<bool name="Disabled">false</bool>
-			<Content name="LinkedSource"><null></null></Content>
-			<string name="Name">GameAnalyticsTest</string>
-			<string name="ScriptGuid"></string>
-			<ProtectedString name="Source"><![CDATA[-- Corecii Cyr 2016-07-19
-
--- This is a very basic test of the functionality, it is not near complete!
--- This also acts as an example as to how it can be used.
-
-local GAInstance = require(game.ServerStorage.GameAnalytics)
-
-local HttpService = game:GetService("HttpService")
-
----
-
--- Submit requests ASAP, or wait until they're scheduled?
-local TEST_SUBMIT_NOW = true
-
----
-
-local ga = GAInstance:new({
-	gameKey = "5c6bcb5402204249437fb5a7a80a4959",
-	secretKey = "16813a12f718bc5c620f56944e1abc3ea13ccbac",
-	url = GAInstance.sandboxUrl
-})
-
-print("test init...")
-ga:init()
-print("inited")
-
-local defAnno = ga:request({
-	device = "unknown",
-	v = 2,
-	user_id = HttpService:GenerateGUID(false):lower(),
-	sdk_version = "rest api v2",
-	os_version = "windows 0",
-	manufacturer = "unknown",
-	platform = "windows",
-	session_id = HttpService:GenerateGUID(false):lower(),
-	session_num = 1,
-	build = "1",
-})
-
-
-local session_start = defAnno:child()
-	:set("category", "user")
-	:submit(TEST_SUBMIT_NOW)
-
-local business_test = defAnno:child()
-	:set(
-		"category", "business",
-		"amount", 100,
-		"currency", "USD",
-		"transaction_num", 1,
-		"cart_type", "test_implementation"
-	)
-	:push("event_id", "testType", "testId")
-	:clone():child():collapse():submit()  -- test clone, child, and collapse
-
-local resource_test_sink = defAnno:child()
-	:set(
-		"category", "resource",
-		"amount", 50
-	)
-	:push("event_id", "Sink", "implementor", "sinker", "implementedSink")
-	:submit(TEST_SUBMIT_NOW)
-
-local resource_test_sink = defAnno:child()
-	:set(
-		"category", "resource",
-		"amount", 25
-	)
-	:push("event_id", "Source", "implementor", "sourcer", "implementedSource")
-	:submit(TEST_SUBMIT_NOW)
-
-local progression_test_start = defAnno:child()
-	:set(
-		"category", "progression"
-	)
-	:push("event_id", "Start", "ex1", "ex2", "ex3")
-	:submit(TEST_SUBMIT_NOW)
-
-local progression_test_fail = defAnno:child()
-	:set(
-		"category", "progression",
-		"attempt_num", 1,
-		"score", 4
-	)
-	:push("event_id", "Fail", "ex1", "ex2", "ex3")
-	:submit(TEST_SUBMIT_NOW)
-
-progression_test_start:submit()
-
-local progression_test_complete = defAnno:child()
-	:set(
-		"category", "progression",
-		"attempt_num", 2,
-		"score", 20
-	)
-	:push("event_id", "Complete", "ex1", "ex2", "ex3")
-	:submit(TEST_SUBMIT_NOW)
-
-print("Did all test requests, any errors are posted.")
-]]></ProtectedString>
-		</Properties>
-	</Item>
 	<Item class="ModuleScript" referent="RBX3CC6947EFD054565B55E369D3DB3975B">
 		<Properties>
 			<Content name="LinkedSource"><null></null></Content>
@@ -332,7 +224,7 @@ GameAnalyticsInstance = Class:new({
 		assert(options.secretKey ~= nil, "You must provide a secretKey string in the options table")
 		assert(type(options.secretKey) == "string", "secretKey should be a string")
 		assert(
-			options.scheduler == nil or (type(options.secretKey) == "table" and type(options.schedule)),
+			options.scheduler == nil or (type(options.scheduler) == "table" and options.scheduler.schedule),
 			"If you provide a scheduler, it must be a table with a 'schedule' method"
 		)
 		assert(
@@ -526,21 +418,26 @@ GameAnalyticsRequest = Class:new({
 	child = function(this)
 		return this:new(this.instance, this)
 	end,
-	collapse = function(this)
+	collapse = function(this, collapseFragments)
 		-- collapse all parent data down into this one and remove the parent property
-		local data = {}
+		local data, revisit = {}, collapseFragments and {}
 		local top, req = {this}
 		while top[1].parent do
 			top = {top[1].parent, top}
 		end
 		repeat
 			req = top[1]
+			local n
 			for k, v in next, req.data do
-				if k:match("^_sub_(.*)") then
+				n = k:match("^_sub_(.*)$")
+				if n then
+					if collapseFragments then
+						revisit[n] = true
+					end
 					local t = data[k] or {}
 					local loc = #t
 					for i, vi in next, v do
-						t[loc + i] = vi
+						t[loc + i] = vi ~= GameAnalyticsRequest.Nil and vi or nil
 					end
 					data[k] = t
 				else
@@ -550,6 +447,14 @@ GameAnalyticsRequest = Class:new({
 			top = top[2]
 		until
 			not top
+		if collapseFragments then
+			local n
+			for k in next, revisit do
+				n = "_sub_"..k
+				data[k] = tconcat(data[n], ":")
+				data[n] = nil
+			end
+		end
 		this.data = data
 		this.parent = nil
 		return this
@@ -596,7 +501,7 @@ GameAnalyticsRequest = Class:new({
 					local t = data[k] or {}
 					local loc = #t
 					for i, vi in next, v do
-						t[loc + i] = vi
+						t[loc + i] = vi ~= GameAnalyticsRequest.Nil and vi or nil
 					end
 					data[k] = t
 				else
@@ -606,7 +511,7 @@ GameAnalyticsRequest = Class:new({
 			top = top[2]
 		until
 			not top
-		local i, n, val
+		local n
 		for k in next, revisit do
 			n = "_sub_"..k
 			data[k] = tconcat(data[n], ":")
@@ -8057,5 +7962,233 @@ return M
 ]]></ProtectedString>
 			</Properties>
 		</Item>
+	</Item>
+	<Item class="Script" referent="RBXE50BF0901108421B9E990099255EB07F">
+		<Properties>
+			<bool name="Disabled">false</bool>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">GameAnalyticsTest</string>
+			<string name="ScriptGuid"></string>
+			<ProtectedString name="Source"><![CDATA[-- Corecii Cyr 2016-07-19
+
+-- Test most of the functionality of this API
+
+local GAInstance = require(game.ServerStorage.GameAnalytics)
+
+local HttpService = game:GetService("HttpService")
+
+---
+
+local sandboxGameKey = "5c6bcb5402204249437fb5a7a80a4959"
+local sandboxSecretKey = "16813a12f718bc5c620f56944e1abc3ea13ccbac"
+
+local hasherTestBody = '{"test": "test"}'
+local hasherTestHash = 'slnR8CKJtKtFDaESSrqnqQeUvp5FaVV7d5XHxt50N5A='
+
+local testUnnecessaryScheduler = GAInstance.DefaultScheduler:new()
+
+local ga = GAInstance:new({
+	gameKey = sandboxGameKey,
+	secretKey = sandboxSecretKey,
+	url = GAInstance.sandboxUrl,
+	scheduler = testUnnecessaryScheduler
+})
+
+assert(ga, "Failed! GameAnalyticsInstance:new did not return an instance")
+assert(ga.gameKey == sandboxGameKey, "Failed! GameAnalyticsInstance:new failed to set the proper game key")
+assert(ga.secretKey == sandboxSecretKey, "Failed! GameAnalyticsInstance:new failed to set the proper secret key")
+assert(ga.url == GAInstance.sandboxUrl, "Failed! GameAnalyticsInstance:new failed to set the proper url")
+assert(ga.hasher, "Failed! GameAnalyticsInstance:new did not create a hashing function")
+assert(ga.hasher(hasherTestBody) == hasherTestHash, "Failed! GameAnalyticsInstance:new's hashing function does not return the correct values")
+
+ga:init()
+assert(ga.hasInit, "Failed! GameAnalyticsInstance:init did not set hasInit properly")
+assert(ga.sendEvents ~= nil, "Failed! GameAnalyticsInstance:init did not set sendEvents properly")
+assert(ga.timestampOffset, "Failed! GameAnalyticsInstance:init did not set the timestamp offset properly or could not init")
+
+local defAnno = ga:request({
+	device = "unknown",
+	v = 2,
+	user_id = HttpService:GenerateGUID(false):lower(),
+	sdk_version = "rest api v2",
+	os_version = "windows 0",
+	manufacturer = "unknown",
+	platform = "windows",
+	session_id = HttpService:GenerateGUID(false):lower(),
+	session_num = 1,
+	build = "1",
+})
+
+
+local req, res = defAnno:child()
+	:set("category", "user")
+	:submit(true)
+assert(res[1][1], "Failed! Did not submit properly: "..tostring(res[1][2]))
+-- If this works then requests in general work.
+-- The next step is to check if :child, :clone, :collapse, and :derive work properly.
+
+
+local ancestorTest = ga:request():set("ancestorValue", 4)
+local parentTest = ancestorTest:child():set("parentValue", 5)
+local childTest = parentTest:child():set("childValue", 6)
+
+local cloneInheritanceTest = childTest:clone():collapse()
+assert(cloneInheritanceTest:get("childValue") == 6, "Failed! GARequest does not clone values properly")
+assert(cloneInheritanceTest:get("parentValue") == 5, "Failed! GARequest does not inherit parent values properly on clones")
+assert(cloneInheritanceTest:get("ancestorValue") == 4, "Failed! GARequest does not inherit ancestor values properly on clones")
+
+local deriveInheritanceTest = childTest:derive()
+assert(deriveInheritanceTest:get("childValue") == 6, "Failed! GARequest does not derive values properly")
+assert(deriveInheritanceTest:get("parentValue") == 5, "Failed! GARequest does not inherit parent values properly on derived request")
+assert(deriveInheritanceTest:get("ancestorValue") == 4, "Failed! GARequest does not inherit ancestor values properly on derived requests")
+
+childTest:collapse()
+assert(childTest:get("childValue") == 6, "Failed! GARequest does not collapse values properly")
+assert(childTest:get("parentValue") == 5, "Failed! GARequest does not inherit parent values properly on collapsed children")
+assert(childTest:get("ancestorValue") == 4, "Failed! GARequest does not inherit ancestor values properly on collapsed children")
+
+childTest = parentTest:child()
+ancestorTest:push("testFragments", "a", "b")
+parentTest:push("testFragments", "c")
+childTest:push("testFragments", "d", "e")
+
+assert(
+	ancestorTest.data._sub_testFragments
+	and ancestorTest.data._sub_testFragments[1] == "a"
+	and ancestorTest.data._sub_testFragments[2] == "b",
+	"Failed! GARequest does not push values properly"
+)
+
+local ancestorClone = ancestorTest:clone()
+assert(
+	ancestorClone.data._sub_testFragments
+	and ancestorClone.data._sub_testFragments[1] == "a"
+	and ancestorClone.data._sub_testFragments[2] == "b",
+	"Failed! GARequest does not clone values properly"
+)
+
+ancestorClone:collapse(true)
+assert(ancestorClone:get("testFragments") == "a:b", "Failed! GARequest does not collapse fragments properly")
+
+local child2Test = childTest:child():pop("testFragments", 4):push("testFragments", "f", "g"):collapse(true)
+assert(child2Test:get("testFragments") == "a:f:g", "Failed! GARequest:pop/:push does not pop/push values across multiple ancestors properly")
+
+print("All GameAnalytics tests succeeded")
+]]></ProtectedString>
+		</Properties>
+	</Item>
+	<Item class="Script" referent="RBX5A8356CE7AD7453F9B1BAAE1EF2BA8D5">
+		<Properties>
+			<bool name="Disabled">true</bool>
+			<Content name="LinkedSource"><null></null></Content>
+			<string name="Name">GameAnalyticsBasicExample</string>
+			<string name="ScriptGuid"></string>
+			<ProtectedString name="Source"><![CDATA[-- Corecii Cyr 2016-07-19
+
+-- Basic example of using this api to send various requests
+
+local GAInstance = require(game.ServerStorage.GameAnalytics)
+
+local HttpService = game:GetService("HttpService")
+
+---
+
+-- Submit requests ASAP, or wait until they're scheduled?
+local TEST_SUBMIT_NOW = true
+
+---
+
+local ga = GAInstance:new({
+	gameKey = "5c6bcb5402204249437fb5a7a80a4959",
+	secretKey = "16813a12f718bc5c620f56944e1abc3ea13ccbac",
+	url = GAInstance.sandboxUrl
+})
+
+ga:init()
+
+-- Default annotations that work for every user.
+-- Unfortunately, ROBLOX doesn't give us access to and device/platform/manufacturer info
+--  Because of this, we will set them all to whatever works. the GA servers only accept actual OS/platforms, so we'll use windows.
+local defAnnoAll = ga:request({
+	v = 2,
+	sdk_version = "rest api v2",
+	os_version = "windows 0",
+	platform = "windows",
+	manufacturer = "unknown",
+	device = "unknown",
+	build = "1",
+})
+
+-- Create default annotations for a specific user.
+-- Collapse this request so that the annotations for this user cannot
+--  change. You should also be saving the data here so that you can properly
+--  signal a session end if the server crashes.
+local defAnnoUser = defAnnoAll:child({
+	user_id = HttpService:GenerateGUID(false):lower(),
+	session_id = HttpService:GenerateGUID(false):lower(),
+	session_num = 1
+}):collapse()
+
+local session_start = defAnnoUser:child()
+	:set("category", "user")
+	:submit(TEST_SUBMIT_NOW)
+
+local business_test = defAnnoUser:child()
+	:set(
+		"category", "business",
+		"amount", 100,
+		"currency", "USD",
+		"transaction_num", 1,
+		"cart_type", "test_implementation"
+	)
+	:push("event_id", "testType", "testId")
+	:submit(TEST_SUBMIT_NOW)
+
+local resource_test_sink = defAnnoUser:child()
+	:set(
+		"category", "resource",
+		"amount", 50
+	)
+	:push("event_id", "Sink", "implementor", "sinker", "implementedSink")
+	:submit(TEST_SUBMIT_NOW)
+
+local resource_test_sink = defAnnoUser:child()
+	:set(
+		"category", "resource",
+		"amount", 25
+	)
+	:push("event_id", "Source", "implementor", "sourcer", "implementedSource")
+	:submit(TEST_SUBMIT_NOW)
+
+local progression_test_start = defAnnoUser:child()
+	:set(
+		"category", "progression"
+	)
+	:push("event_id", "Start", "ex1", "ex2", "ex3")
+	:submit(TEST_SUBMIT_NOW)
+
+local progression_test_fail = defAnnoUser:child()
+	:set(
+		"category", "progression",
+		"attempt_num", 1,
+		"score", 4
+	)
+	:push("event_id", "Fail", "ex1", "ex2", "ex3")
+	:submit(TEST_SUBMIT_NOW)
+
+progression_test_start:submit(TEST_SUBMIT_NOW)  -- You can submit a request multiple times.
+
+local progression_test_complete = defAnnoUser:child()
+	:set(
+		"category", "progression",
+		"attempt_num", 2,
+		"score", 20
+	)
+	:push("event_id", "Complete", "ex1", "ex2", "ex3")
+	:submit(TEST_SUBMIT_NOW)
+
+print("Did all test requests")
+]]></ProtectedString>
+		</Properties>
 	</Item>
 </roblox>
